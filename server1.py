@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from pyvirtualdisplay import Display
 from CloudflareBypasser import CloudflareBypasser
 from DrissionPage import ChromiumPage, ChromiumOptions
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, Query
 from pydantic import BaseModel
 from typing import Dict
 import argparse
@@ -38,13 +38,23 @@ if sys.platform.startswith("win"):
 else:
     browser_path = os.getenv("CHROME_PATH", "/usr/bin/google-chrome")
 
-app = FastAPI()
+app = FastAPI(
+    title="Cloudflare Bypass API",
+    description="An API service that helps bypass Cloudflare protection and retrieve cookies and HTML content from protected websites.",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+)
 
 
 # Pydantic model for the response
 class CookieResponse(BaseModel):
     cookies: Dict[str, str]
     user_agent: str
+
+    class Config:
+        schema_extra = {"example": {"cookies": {"cf_clearance": "abc123...", "other_cookie": "value"}, "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36..."}}
 
 
 # Function to check if the URL is safe
@@ -91,8 +101,18 @@ def bypass_cloudflare(url: str, proxy: str, retries: int, log: bool) -> Chromium
 
 
 # Endpoint to get cookies
-@app.get("/cookies", response_model=CookieResponse)
-async def get_cookies(url: str, proxy: str, retries: int = 5):
+@app.get(
+    "/cookies",
+    response_model=CookieResponse,
+    summary="Get Cloudflare bypass cookies",
+    description="Bypasses Cloudflare protection and returns the cookies and user agent needed for future requests.",
+    response_description="Returns a dictionary of cookies and the user agent string",
+)
+async def get_cookies(
+    url: str = Query(..., description="The URL of the Cloudflare-protected website"),
+    proxy: str = Query(..., description="Proxy server to use (e.g., 'http://proxy:port')"),
+    retries: int = Query(5, description="Number of retry attempts for bypassing Cloudflare"),
+):
     if not is_safe_url(url):
         raise HTTPException(status_code=400, detail="Invalid URL")
     try:
@@ -106,8 +126,17 @@ async def get_cookies(url: str, proxy: str, retries: int = 5):
 
 
 # Endpoint to get HTML content and cookies
-@app.get("/html")
-async def get_html(url: str, proxy: str, retries: int = 5):
+@app.get(
+    "/html",
+    summary="Get HTML content with bypass",
+    description="Bypasses Cloudflare protection and returns the full HTML content along with cookies and user agent in headers",
+    response_description="Returns HTML content with cookies and user agent in response headers",
+)
+async def get_html(
+    url: str = Query(..., description="The URL of the Cloudflare-protected website"),
+    proxy: str = Query(..., description="Proxy server to use (e.g., 'http://proxy:port')"),
+    retries: int = Query(5, description="Number of retry attempts for bypassing Cloudflare"),
+):
     if not is_safe_url(url):
         raise HTTPException(status_code=400, detail="Invalid URL")
     try:
