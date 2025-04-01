@@ -9,6 +9,3 @@ http://localhost:8000/docs
 
 http://localhost:8000/html?proxy=127.0.0.1:8866&url=https://nopecha.com/demo/cloudflare
 http://localhost:8000/redoc
-
-
-https://github.com/workwhileweb/CloudflareBypassForScraping
